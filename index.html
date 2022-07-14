@@ -11,15 +11,25 @@
     <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js" integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ==" crossorigin=""></script>
 </head>
 <body>
-    <center>
-        <div id="testMap" style="height:700px;"></div>
-
-        <input type="file" id="data-input" multiple/>
-        <br><br>
-        <button id="render-data">Render Data</button>
-        <br><br>
-        <div id="sensors" />
-    </center>
+    <div style="display: flex;flex-direction: row;">
+        <div style="flex: 1;">
+            <div id="testMap" style="height:700px;"></div>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+            <label for="sensors">Sensors</label>
+            <div id="sensors" style="height: 98%"></div>
+            <br>
+            <input type="file" id="data-input" multiple/>
+            <br>
+            <div style="display: flex; flex-direction: row;">
+                <button id="render-data">Render Data</button>
+                <button id="clear-data">Clear: </button>
+                <select name="overlays" id="overlays">
+                    <option value="All">All</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
