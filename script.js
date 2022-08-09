@@ -10,6 +10,7 @@ let datatypes = []; // [datatype, ...]
 let uploads = {}; // {filename: {points: [{data, marker}, ...], overlay, viewMarkers, datatypes}}
 let extrema = {}; // {datatype: [min, max]}
 let view = L.featureGroup();
+let legend = L.control({position: "topright"});
 
 $("#render-data").click(() => {
     $('#data-input').parse({
@@ -43,6 +44,9 @@ $("#clear-data").click(() => {
         });
 
         uploads = {};
+
+        map.removeControl(legend);
+        legend = L.control({position: "topright"});
 
         $("#sensors").empty();
 
@@ -121,8 +125,7 @@ const plot = (results, file) => {
         };
     });
 
-    // Update colors and descriptions
-    resetColors(displayedData);
+    // Update descriptions
     resetDesc();
 
     // Add overlay to map
@@ -132,7 +135,7 @@ const plot = (results, file) => {
     // Set view
     $("#sensors").children() > 0 ? map.flyToBounds(view.getBounds()) : map.fitBounds(view.getBounds());
 
-    // Create radio buttons
+    // Update and trigger radio buttons
     resetRadio(displayedData);
 
     // Add to dropdown
@@ -155,11 +158,11 @@ const findExtrema = () => {
     }, {});
 };
 
-const resetColors = datatype => {
+const resetColors = (datatype, colormap) => {
     Object.values(uploads).reduce((pointArr, upload) => pointArr.concat(upload.points), [])
         .forEach(point => {
             const pointColor = !isNaN(point.data[datatype])
-                ? rainbow(normalize(parseFloat(point.data[datatype]), ...extrema[datatype]))
+                ? colormap(parseFloat(point.data[datatype]))
                 : "gray";
             point.marker.setStyle({ color: pointColor });
     });
@@ -168,7 +171,22 @@ const resetColors = datatype => {
 const resetDesc = () => {
     Object.values(uploads).reduce((pointArr, upload) => pointArr.concat(upload.points), [])
         .forEach(point => {
-            const description = datatypes.reduce((descStr, datatype) => descStr += datatype + ": " + (point.data[datatype] || "N/A") + "<br>", "");
+            const description = datatypes.reduce((descStr, datatype) => {
+                if (datatype === "Epoch time") {
+                    const date = new Date(parseFloat(point.data[datatype] * 1000));
+                    const timeZone = (tzlookup(point.data["Latitude"], point.data["Longitude"]));
+                    const formatter = new Intl.DateTimeFormat("en-US", {
+                        hour12: true,
+                        timeStyle: "medium",
+                        timeZone: timeZone,
+                    })
+                    descStr += "Time: " + formatter.format(date) + "<br>";
+                } else {
+                    descStr += datatype + ": " + (point.data[datatype] || "N/A") + "<br>"
+                }
+                return descStr;
+            }, "");
+
             point.marker.setPopupContent(description);
     });
 };
@@ -188,14 +206,18 @@ const resetRadio = displayedData => {
     });
 
     $(".sensor-radio-btn").click(() => {
+        if (legend) map.removeControl(legend);
         const selectedDatatype = getDisplayedData();
-        resetColors(selectedDatatype);
+        const colorbarData = addColorbar(map, selectedDatatype, ...extrema[selectedDatatype]);
+        const colormap = colorbarData.colormap;
+        legend = colorbarData.legend;
+        resetColors(selectedDatatype, colormap);
     });
 
-    if (radioToCheck.length === 1) {
+    if (radioToCheck.length === 1) { // Already selected radio button
         radioToCheck[0].checked = true;
         radioToCheck[0].click();
-    } else if (radioButtons.length > 0 && radioToCheck.length === 0) {
+    } else if (radioButtons.length > 0 && radioToCheck.length === 0) { // No selected radio buttons
         radioButtons[0].checked = true;
         radioButtons[0].click();
     } else {
@@ -205,4 +227,3 @@ const resetRadio = displayedData => {
 
 const getDisplayedData = () => $("#sensors").children().length > 0 ? $('input[name="sensor"]:checked').val() : datatypes[0];
 
-const normalize = (value, min, max) => (value - min) / (max - min);
